@@ -89,6 +89,11 @@ You can see a [working example here](https://github.com/WebOfTrust/signify-ts/bl
     make test-coverage
     ```
 
+* Run tests with coverage:
+    ```bash
+    make test-coverage
+    ```
+
 ## Publishing containers
 
 Enable the containerd image store
