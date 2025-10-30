@@ -99,14 +99,13 @@ class ExchangeCollectionEnd:
         ked = httping.getRequiredParam(body, "exn")
         sigs = httping.getRequiredParam(body, "sigs")
         atc = httping.getRequiredParam(body, "atc")
-        rec = httping.getRequiredParam(body, "rec")
         topic = httping.getRequiredParam(body, "tpc")
 
-        for recp in rec:  # Have to verify we already know all the recipients.
-            if recp not in agent.hby.kevers:
-                raise falcon.HTTPBadRequest(
-                    description=f"attempt to send to unknown AID={recp}"
-                )
+        recp = ked["rp"] or ked["a"]["i"]
+        if recp not in agent.hby.kevers:
+            raise falcon.HTTPBadRequest(
+                description=f"attempt to send to unknown AID={recp}"
+            )
 
         # use that data to create th Serder and Sigers for the exn
         serder = serdering.SerderKERI(sad=ked)
@@ -126,7 +125,7 @@ class ExchangeCollectionEnd:
         # make a copy and parse
         agent.hby.psr.parseOne(ims=bytearray(ims))
 
-        msg = dict(said=serder.said, pre=hab.pre, rec=rec, topic=topic)
+        msg = dict(said=serder.said, pre=hab.pre, topic=topic)
 
         agent.exchanges.append(msg)
 
