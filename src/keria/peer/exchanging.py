@@ -4,6 +4,7 @@ KERIA
 keria.app.exchanging module
 
 """
+
 import json
 
 import falcon
@@ -26,10 +27,9 @@ def loadEnds(app):
 
 
 class ExchangeCollectionEnd:
-
     @staticmethod
     def on_post(req, rep, name):
-        """  POST endpoint for exchange message collection
+        """POST endpoint for exchange message collection
 
         Args:
             req (Request): falcon HTTP request object
@@ -85,9 +85,15 @@ class ExchangeCollectionEnd:
         body = req.get_media()
 
         # Get the hab
-        hab = agent.hby.habs[name] if name in agent.hby.habs else agent.hby.habByName(name)
+        hab = (
+            agent.hby.habs[name]
+            if name in agent.hby.habs
+            else agent.hby.habByName(name)
+        )
         if hab is None:
-            raise falcon.HTTPNotFound(description=f"{name} is not a valid reference to an identifier")
+            raise falcon.HTTPNotFound(
+                description=f"{name} is not a valid reference to an identifier"
+            )
 
         # Get the exn, sigs, additional attachments and recipients  from the request
         ked = httping.getRequiredParam(body, "exn")
@@ -98,7 +104,9 @@ class ExchangeCollectionEnd:
 
         for recp in rec:  # Have to verify we already know all the recipients.
             if recp not in agent.hby.kevers:
-                raise falcon.HTTPBadRequest(description=f"attempt to send to unknown AID={recp}")
+                raise falcon.HTTPBadRequest(
+                    description=f"attempt to send to unknown AID={recp}"
+                )
 
         # use that data to create th Serder and Sigers for the exn
         serder = serdering.SerderKERI(sad=ked)
@@ -106,7 +114,9 @@ class ExchangeCollectionEnd:
 
         # Now create the stream to send, need the signer seal
         kever = hab.kever
-        seal = eventing.SealEvent(i=hab.pre, s="{:x}".format(kever.lastEst.s), d=kever.lastEst.d)
+        seal = eventing.SealEvent(
+            i=hab.pre, s="{:x}".format(kever.lastEst.s), d=kever.lastEst.d
+        )
 
         ims = eventing.messagize(serder=serder, sigers=sigers, seal=seal)
 
@@ -125,10 +135,9 @@ class ExchangeCollectionEnd:
 
 
 class ExchangeQueryCollectionEnd:
-
     @staticmethod
     def on_post(req, rep):
-        """  POST endpoint for exchange message collection
+        """POST endpoint for exchange message collection
 
         Args:
             req (Request): falcon HTTP request object
@@ -198,7 +207,12 @@ class ExchangeQueryCollectionEnd:
         exns = []
         for said in saids:
             serder, pathed = exchanging.cloneMessage(agent.hby, said.qb64)
-            exns.append(dict(exn=serder.ked, pathed={k: v.decode("utf-8") for k, v in pathed.items()}))
+            exns.append(
+                dict(
+                    exn=serder.ked,
+                    pathed={k: v.decode("utf-8") for k, v in pathed.items()},
+                )
+            )
 
         rep.status = falcon.HTTP_200
         rep.content_type = "application/json"
@@ -206,7 +220,7 @@ class ExchangeQueryCollectionEnd:
 
 
 class ExchangeResourceEnd:
-    """ Exchange message resource endpoint class """
+    """Exchange message resource endpoint class"""
 
     @staticmethod
     def on_get(req, rep, said):
@@ -239,9 +253,13 @@ class ExchangeResourceEnd:
         serder, pathed = exchanging.cloneMessage(agent.hby, said)
 
         if serder is None:
-            raise falcon.HTTPNotFound(description=f"SAID {said} does not match a verified EXN message")
+            raise falcon.HTTPNotFound(
+                description=f"SAID {said} does not match a verified EXN message"
+            )
 
-        exn = dict(exn=serder.ked, pathed={k: v.decode("utf-8") for k, v in pathed.items()})
+        exn = dict(
+            exn=serder.ked, pathed={k: v.decode("utf-8") for k, v in pathed.items()}
+        )
         rep.status = falcon.HTTP_200
         rep.content_type = "application/json"
         rep.data = json.dumps(exn).encode("utf-8")

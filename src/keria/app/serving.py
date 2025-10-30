@@ -5,12 +5,14 @@ from keri import help
 
 logger = help.ogler.getLogger()
 
+
 class GracefulShutdownDoer(doing.Doer):
     """
     Shuts all Agency agents down before exiting the Doist loop, performing a graceful shutdown.
     Sets up signal handler in the Doer.enter lifecycle method and exits the Doist scheduler loop in Doer.exit
     Checks for the shutdown flag being set in the Doer.recur lifecycle method.
     """
+
     def __init__(self, doist, agency, **kwa):
         """
         Parameters:
@@ -26,7 +28,7 @@ class GracefulShutdownDoer(doing.Doer):
 
     def handle_sigterm(self, signum, frame):
         """Handler function for SIGTERM"""
-        logger.info(f"Received SIGTERM, initiating graceful shutdown.")
+        logger.info("Received SIGTERM, initiating graceful shutdown.")
         self.shutdown_received = True
 
     def shutdown_agents(self, agents):
@@ -48,12 +50,12 @@ class GracefulShutdownDoer(doing.Doer):
         """Generator coroutine checking once per tock for shutdown flag"""
         # Checks once per tock if the shutdown flag has been set and if so initiates the shutdown process
         while not self.shutdown_received:
-            yield tock # will iterate forever in here until shutdown flag set
+            yield tock  # will iterate forever in here until shutdown flag set
 
         # Once shutdown_flag is set, exit the Doist loop
         self.shutdown_agents(list(self.agency.agents.keys()))
 
-        return True # Returns a "done" status
+        return True  # Returns a "done" status
         # Causes the Doist scheduler to call .exit() lifecycle method below, killing the doist loop
 
     def exit(self):
@@ -61,5 +63,5 @@ class GracefulShutdownDoer(doing.Doer):
         Exits the Doist loop.
         Lifecycle method called once when the Doist running this Doer exits the context for this Doer.
         """
-        logger.info(f"Shutting down main Doist loop")
+        logger.info("Shutting down main Doist loop")
         self.doist.exit()

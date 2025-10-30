@@ -4,6 +4,7 @@ KERIA
 keria.app.agenting module
 
 """
+
 import logging
 import os
 from base64 import b64decode
@@ -25,8 +26,19 @@ from keri import core, kering, help
 from keri.app.notifying import Notifier
 from keri.app.storing import Mailboxer
 
-from keri.app import configing, keeping, habbing, storing, signaling, oobiing, agenting, \
-    forwarding, querying, connecting, grouping
+from keri.app import (
+    configing,
+    keeping,
+    habbing,
+    storing,
+    signaling,
+    oobiing,
+    agenting,
+    forwarding,
+    querying,
+    connecting,
+    grouping,
+)
 from keri.app.grouping import Counselor
 from keri.app.keeping import Algos
 from keri.core import coring, parsing, eventing, routing, serdering
@@ -55,12 +67,14 @@ from ..db import basing
 
 logger = ogler.getLogger()
 
+
 @dataclass
 class KERIAServerConfig:
     """
     Provides a dataclass to define server config so it is easy to test with multiprocess.
     Dataclasses are Pickleable and can be passed to a new process.
     """
+
     # HTTP ports to use.
     # Admin port number the admin HTTP server listens on.
     # Default is 3901. KERIA_ADMIN_PORT also sets this
@@ -118,6 +132,7 @@ class KERIAServerConfig:
     # Experimental username for boot endpoint. Enables HTTP Basic Authentication for the boot endpoint. Only meant to be used for testing purposes.
     bootUsername: str = None
 
+
 def runAgency(config: KERIAServerConfig):
     """Runs a KERIA Agency with the given Doers by calling Doist.do(). Useful for testing."""
     help.ogler.level = logging.getLevelName(config.logLevel)
@@ -126,12 +141,18 @@ def runAgency(config: KERIAServerConfig):
         help.ogler.headDirPath = config.logFile
         help.ogler.reopen(name=config.name, temp=False, clear=True)
 
-    logger.info("Starting Agent for %s listening: admin/%s, http/%s, boot/%s",
-                config.name, config.adminPort, config.httpPort, config.bootPort)
+    logger.info(
+        "Starting Agent for %s listening: admin/%s, http/%s, boot/%s",
+        config.name,
+        config.adminPort,
+        config.httpPort,
+        config.bootPort,
+    )
     logger.info("PID: %s", os.getpid())
 
     doist = agencyDoist(setupDoers(config))
     doist.do()
+
 
 def agencyDoist(doers: List[Doer]):
     """Creates a Doist for the Agency doers and adds a graceful shutdown handler. Useful for testing."""
@@ -141,12 +162,14 @@ def agencyDoist(doers: List[Doer]):
     doist.doers = doers
     return doist
 
+
 def getAgency(doers):
     """Get the agency from a list of Doers. Used to get the Agency for the graceful agent shutdown."""
     for doer in doers:
         if isinstance(doer, Agency):
             return doer
         return None
+
 
 def setupDoers(config: KERIAServerConfig):
     """
@@ -164,44 +187,64 @@ def setupDoers(config: KERIAServerConfig):
         releaseTimeout=config.releaseTimeout,
         curls=config.curls,
         iurls=config.iurls,
-        durls=config.durls
+        durls=config.durls,
     )
     allowed_cors_headers = [
-        'cesr-attachment',
-        'cesr-date',
-        'content-type',
-        'signature',
-        'signature-input',
-        'signify-resource',
-        'signify-timestamp'
+        "cesr-attachment",
+        "cesr-date",
+        "content-type",
+        "signature",
+        "signature-input",
+        "signify-resource",
+        "signify-timestamp",
     ]
-    bootApp = falcon.App(middleware=falcon.CORSMiddleware(
-        allow_origins='*', allow_credentials='*',
-        expose_headers=allowed_cors_headers))
+    bootApp = falcon.App(
+        middleware=falcon.CORSMiddleware(
+            allow_origins="*",
+            allow_credentials="*",
+            expose_headers=allowed_cors_headers,
+        )
+    )
 
-    bootServer = createHttpServer(config.bootPort, bootApp, config.keyPath, config.certPath, config.caFilePath)
+    bootServer = createHttpServer(
+        config.bootPort, bootApp, config.keyPath, config.certPath, config.caFilePath
+    )
     if not bootServer.reopen():
         raise RuntimeError(f"Cannot create boot HTTP server on port {config.bootPort}")
     bootServerDoer = http.ServerDoer(server=bootServer)
-    bootEnd = BootEnd(agency, username=config.bootUsername, password=config.bootPassword)
+    bootEnd = BootEnd(
+        agency, username=config.bootUsername, password=config.bootPassword
+    )
     bootApp.add_route("/boot", bootEnd)
     bootApp.add_route("/health", HealthEnd())
 
     # Create Authenticater for verifying signatures on all requests
     authn = Authenticater(agency=agency)
 
-    app = falcon.App(middleware=falcon.CORSMiddleware(
-        allow_origins='*', allow_credentials='*',
-        expose_headers=allowed_cors_headers))
+    app = falcon.App(
+        middleware=falcon.CORSMiddleware(
+            allow_origins="*",
+            allow_credentials="*",
+            expose_headers=allowed_cors_headers,
+        )
+    )
     if config.cors:
         app.add_middleware(middleware=httping.HandleCORS())
-    app.add_middleware(authing.SignatureValidationComponent(agency=agency, authn=authn, allowed=["/agent"]))
+    app.add_middleware(
+        authing.SignatureValidationComponent(
+            agency=agency, authn=authn, allowed=["/agent"]
+        )
+    )
     app.req_options.media_handlers.update(media.Handlers())
     app.resp_options.media_handlers.update(media.Handlers())
 
-    adminServer = createHttpServer(config.adminPort, app, config.keyPath, config.certPath, config.caFilePath)
+    adminServer = createHttpServer(
+        config.adminPort, app, config.keyPath, config.certPath, config.caFilePath
+    )
     if not adminServer.reopen():
-        raise RuntimeError(f"cannot create admin HTTP server on port {config.adminPort}")
+        raise RuntimeError(
+            f"cannot create admin HTTP server on port {config.adminPort}"
+        )
     adminServerDoer = http.ServerDoer(server=adminServer)
 
     doers = [agency, bootServerDoer, adminServerDoer]
@@ -215,25 +258,35 @@ def setupDoers(config: KERIAServerConfig):
     ipexing.loadEnds(app=app)
 
     if config.httpPort:
-        happ = falcon.App(middleware=falcon.CORSMiddleware(
-            allow_origins='*', allow_credentials='*',
-            expose_headers=allowed_cors_headers))
+        happ = falcon.App(
+            middleware=falcon.CORSMiddleware(
+                allow_origins="*",
+                allow_credentials="*",
+                expose_headers=allowed_cors_headers,
+            )
+        )
         happ.req_options.media_handlers.update(media.Handlers())
         happ.resp_options.media_handlers.update(media.Handlers())
 
         ending.loadEnds(agency=agency, app=happ)
         indirecting.loadEnds(agency=agency, app=happ)
 
-        server = createHttpServer(config.httpPort, happ, config.keyPath, config.certPath, config.caFilePath)
+        server = createHttpServer(
+            config.httpPort, happ, config.keyPath, config.certPath, config.caFilePath
+        )
         if not server.reopen():
-            raise RuntimeError(f"cannot create local http server on port {config.httpPort}")
+            raise RuntimeError(
+                f"cannot create local http server on port {config.httpPort}"
+            )
         httpServerDoer = http.ServerDoer(server=server)
         doers.append(httpServerDoer)
 
         swagsink = http.serving.StaticSink(staticDirPath="./static")
         happ.add_sink(swagsink, prefix="/swaggerui")
 
-        specEnd = AgentSpecResource(app=app, title='KERIA Interactive Web Interface API')
+        specEnd = AgentSpecResource(
+            app=app, title="KERIA Interactive Web Interface API"
+        )
         specEnd.addRoutes(happ)
         happ.add_route("/spec.yaml", specEnd)
 
@@ -255,11 +308,13 @@ def createHttpServer(port, app, keypath=None, certpath=None, cafilepath=None):
         hio.core.http.Server
     """
     if keypath is not None and certpath is not None and cafilepath is not None:
-        servant = tcp.ServerTls(certify=False,
-                                keypath=keypath,
-                                certpath=certpath,
-                                cafilepath=cafilepath,
-                                port=port)
+        servant = tcp.ServerTls(
+            certify=False,
+            keypath=keypath,
+            certpath=certpath,
+            cafilepath=cafilepath,
+            port=port,
+        )
         server = http.Server(port=port, app=app, servant=servant)
     else:
         server = http.Server(port=port, app=app)
@@ -272,7 +327,20 @@ class Agency(doing.DoDoer):
 
     """
 
-    def __init__(self, name, bran, base="", releaseTimeout=None, configFile=None, configDir=None, adb=None, temp=False, curls=None, iurls=None, durls=None):
+    def __init__(
+        self,
+        name,
+        bran,
+        base="",
+        releaseTimeout=None,
+        configFile=None,
+        configDir=None,
+        adb=None,
+        temp=False,
+        curls=None,
+        iurls=None,
+        durls=None,
+    ):
         self.name = name
         self.base = base
         self.bran = bran
@@ -285,26 +353,31 @@ class Agency(doing.DoDoer):
         self.durls = durls
 
         if self.configFile is not None:
-            self.cf = configing.Configer(name=self.configFile,
-                                         base="",
-                                         headDirPath=self.configDir,
-                                         temp=False,
-                                         reopen=True,
-                                         clear=False)
+            self.cf = configing.Configer(
+                name=self.configFile,
+                base="",
+                headDirPath=self.configDir,
+                temp=False,
+                reopen=True,
+                clear=False,
+            )
 
         self.agents = dict()
 
-        self.adb = adb if adb is not None else basing.AgencyBaser(name="TheAgency", base=base, reopen=True, temp=temp)
-        super(Agency, self).__init__(doers=[Releaser(self, releaseTimeout=releaseTimeout)], always=True)
+        self.adb = (
+            adb
+            if adb is not None
+            else basing.AgencyBaser(name="TheAgency", base=base, reopen=True, temp=temp)
+        )
+        super(Agency, self).__init__(
+            doers=[Releaser(self, releaseTimeout=releaseTimeout)], always=True
+        )
 
     def create(self, caid, salt=None):
-        ks = keeping.Keeper(name=caid,
-                            base=self.base,
-                            temp=self.temp,
-                            reopen=True)
+        ks = keeping.Keeper(name=caid, base=self.base, temp=self.temp, reopen=True)
 
         timestamp = nowIso8601()
-        data = dict(self.cf.get() if self.cf is not None else { "dt": timestamp })
+        data = dict(self.cf.get() if self.cf is not None else {"dt": timestamp})
 
         habName = f"agent-{caid}"
         if "keria" in data:
@@ -312,7 +385,7 @@ class Agency(doing.DoDoer):
             del data["keria"]
 
         if self.curls is not None and isinstance(self.curls, list):
-            data[habName] = { "dt": timestamp, "curls": self.curls }
+            data[habName] = {"dt": timestamp, "curls": self.curls}
 
         if self.iurls is not None and isinstance(self.iurls, list):
             data["iurls"] = self.iurls
@@ -320,31 +393,39 @@ class Agency(doing.DoDoer):
         if self.durls is not None and isinstance(self.durls, list):
             data["durls"] = self.durls
 
-        config = configing.Configer(name=f"{caid}",
-                                base="",
-                                human=False,
-                                temp=self.temp,
-                                reopen=True,
-                                clear=False)
+        config = configing.Configer(
+            name=f"{caid}",
+            base="",
+            human=False,
+            temp=self.temp,
+            reopen=True,
+            clear=False,
+        )
 
         config.put(data)
 
         # Create the Hab for the Agent with only 2 AIDs
-        agentHby = habbing.Habery(name=caid, base=self.base, bran=self.bran, ks=ks, cf=config, temp=self.temp, salt=salt)
+        agentHby = habbing.Habery(
+            name=caid,
+            base=self.base,
+            bran=self.bran,
+            ks=ks,
+            cf=config,
+            temp=self.temp,
+            salt=salt,
+        )
         agentHab = agentHby.makeHab(habName, ns="agent", transferable=True, delpre=caid)
-        agentRgy = Regery(hby=agentHby, name=agentHab.name, base=self.base, temp=self.temp)
+        agentRgy = Regery(
+            hby=agentHby, name=agentHab.name, base=self.base, temp=self.temp
+        )
 
-        agent = Agent(hby=agentHby,
-                      rgy=agentRgy,
-                      agentHab=agentHab,
-                      caid=caid,
-                      agency=self)
+        agent = Agent(
+            hby=agentHby, rgy=agentRgy, agentHab=agentHab, caid=caid, agency=self
+        )
 
-        self.adb.agnt.pin(keys=(caid,),
-                          val=coring.Prefixer(qb64=agent.pre))
+        self.adb.agnt.pin(keys=(caid,), val=coring.Prefixer(qb64=agent.pre))
 
-        self.adb.ctrl.pin(keys=(agent.pre,),
-                          val=coring.Prefixer(qb64=caid))
+        self.adb.ctrl.pin(keys=(agent.pre,), val=coring.Prefixer(qb64=caid))
 
         # add agent to cache
         self.agents[caid] = agent
@@ -376,7 +457,9 @@ class Agency(doing.DoDoer):
             agent.registrar.rgy.close()
             agent.mgr.rb.close(clear=False)
             agent.hby.close(clear=False)
-        except lmdb.Error as ex:  # Sometimes LMDB will throw an error if the DB is already closed
+        except (
+            lmdb.Error
+        ) as ex:  # Sometimes LMDB will throw an error if the DB is already closed
             logger.error(f"Error closing databases for agent {agent.caid}: {ex}")
 
     def get(self, caid):
@@ -389,19 +472,24 @@ class Agency(doing.DoDoer):
         if aaid is None:
             return None
 
-        ks = keeping.Keeper(name=caid,
-                            base=self.base,
-                            temp=self.temp,
-                            reopen=True)
+        ks = keeping.Keeper(name=caid, base=self.base, temp=self.temp, reopen=True)
 
-        agentHby = habbing.Habery(name=caid, base=self.base, bran=self.bran, ks=ks, temp=self.temp)
+        agentHby = habbing.Habery(
+            name=caid, base=self.base, bran=self.bran, ks=ks, temp=self.temp
+        )
 
         agentHab = agentHby.habByName(f"agent-{caid}", ns="agent")
         if aaid.qb64 != agentHab.pre:
-            raise kering.ConfigurationError(f"invalid agent aid={aaid.qb64}/{agentHab.pre} to controller aid={caid}")
+            raise kering.ConfigurationError(
+                f"invalid agent aid={aaid.qb64}/{agentHab.pre} to controller aid={caid}"
+            )
 
-        agentRgy = Regery(hby=agentHby, name=agentHab.name, base=self.base, temp=self.temp)
-        agent = Agent(hby=agentHby, rgy=agentRgy, agentHab=agentHab, agency=self, caid=caid)
+        agentRgy = Regery(
+            hby=agentHby, name=agentHab.name, base=self.base, temp=self.temp
+        )
+        agent = Agent(
+            hby=agentHby, rgy=agentRgy, agentHab=agentHab, agency=self, caid=caid
+        )
 
         self.agents[caid] = agent
         self.extend([agent])
@@ -440,7 +528,9 @@ class Agent(doing.DoDoer):
         self.agentHab = agentHab
         self.agency = agency
         self.caid = caid
-        self.cfd = MappingProxyType(dict(self.hby.cf.get()) if self.hby.cf is not None else dict())
+        self.cfd = MappingProxyType(
+            dict(self.hby.cf.get()) if self.hby.cf is not None else dict()
+        )
         self.tocks = MappingProxyType(self.cfd.get("tocks", {}))
 
         self.last = helping.nowUTC()
@@ -469,10 +559,23 @@ class Agent(doing.DoDoer):
         self.witDoer = agenting.WitnessReceiptor(hby=self.hby)
         self.witSubmitDoer = agenting.WitnessReceiptor(hby=self.hby, force=True)
 
-        self.rep = storing.Respondant(hby=hby, cues=self.cues, mbx=Mailboxer(name=self.hby.name, temp=self.hby.temp))
+        self.rep = storing.Respondant(
+            hby=hby,
+            cues=self.cues,
+            mbx=Mailboxer(name=self.hby.name, temp=self.hby.temp),
+        )
 
-        doers = [habbing.HaberyDoer(habery=hby), receiptor, self.witq, self.witPub, self.rep, self.swain,
-                 self.counselor, self.witDoer, *oobiery.doers]
+        doers = [
+            habbing.HaberyDoer(habery=hby),
+            receiptor,
+            self.witq,
+            self.witPub,
+            self.rep,
+            self.swain,
+            self.counselor,
+            self.witDoer,
+            *oobiery.doers,
+        ]
 
         signaler = signaling.Signaler()
         self.notifier = Notifier(hby=hby, signaler=signaler)
@@ -480,14 +583,34 @@ class Agent(doing.DoDoer):
 
         # Initialize all the credential processors
         self.verifier = verifying.Verifier(hby=hby, reger=rgy.reger)
-        self.registrar = credentialing.Registrar(agentHab=agentHab, hby=hby, rgy=rgy, counselor=self.counselor,
-                                                 witPub=self.witPub, witDoer=self.witDoer, verifier=self.verifier)
-        self.credentialer = credentialing.Credentialer(agentHab=agentHab, hby=self.hby, rgy=self.rgy,
-                                                       registrar=self.registrar, verifier=self.verifier,
-                                                       notifier=self.notifier)
+        self.registrar = credentialing.Registrar(
+            agentHab=agentHab,
+            hby=hby,
+            rgy=rgy,
+            counselor=self.counselor,
+            witPub=self.witPub,
+            witDoer=self.witDoer,
+            verifier=self.verifier,
+        )
+        self.credentialer = credentialing.Credentialer(
+            agentHab=agentHab,
+            hby=self.hby,
+            rgy=self.rgy,
+            registrar=self.registrar,
+            verifier=self.verifier,
+            notifier=self.notifier,
+        )
 
-        self.seeker = basing.Seeker(name=hby.name, db=hby.db, reger=self.rgy.reger, reopen=True, temp=self.hby.temp)
-        self.exnseeker = basing.ExnSeeker(name=hby.name, db=hby.db, reopen=True, temp=self.hby.temp)
+        self.seeker = basing.Seeker(
+            name=hby.name,
+            db=hby.db,
+            reger=self.rgy.reger,
+            reopen=True,
+            temp=self.hby.temp,
+        )
+        self.exnseeker = basing.ExnSeeker(
+            name=hby.name, db=hby.db, reopen=True, temp=self.hby.temp
+        )
 
         challengeHandler = challenging.ChallengeHandler(db=hby.db, signaler=signaler)
 
@@ -495,54 +618,123 @@ class Agent(doing.DoDoer):
         self.exc = exchanging.Exchanger(hby=hby, handlers=handlers)
         grouping.loadHandlers(exc=self.exc, mux=self.mux)
         protocoling.loadHandlers(hby=self.hby, exc=self.exc, notifier=self.notifier)
-        self.submitter = Submitter(hby=hby, submits=self.submits, witRec=self.witSubmitDoer)
-        self.monitor = longrunning.Monitor(hby=hby, swain=self.swain, counselor=self.counselor, temp=hby.temp,
-                                           registrar=self.registrar, credentialer=self.credentialer, submitter=self.submitter, exchanger=self.exc)
+        self.submitter = Submitter(
+            hby=hby, submits=self.submits, witRec=self.witSubmitDoer
+        )
+        self.monitor = longrunning.Monitor(
+            hby=hby,
+            swain=self.swain,
+            counselor=self.counselor,
+            temp=hby.temp,
+            registrar=self.registrar,
+            credentialer=self.credentialer,
+            submitter=self.submitter,
+            exchanger=self.exc,
+        )
 
         self.rvy = routing.Revery(db=hby.db, cues=self.cues)
-        self.kvy = eventing.Kevery(db=hby.db,
-                                   lax=True,
-                                   local=False,
-                                   rvy=self.rvy,
-                                   cues=self.cues)
+        self.kvy = eventing.Kevery(
+            db=hby.db, lax=True, local=False, rvy=self.rvy, cues=self.cues
+        )
         self.kvy.registerReplyRoutes(router=self.rvy.rtr)
 
-        self.tvy = Tevery(reger=self.verifier.reger,
-                          db=hby.db,
-                          local=False,
-                          cues=self.cues)
+        self.tvy = Tevery(
+            reger=self.verifier.reger, db=hby.db, local=False, cues=self.cues
+        )
 
         self.tvy.registerReplyRoutes(router=self.rvy.rtr)
-        self.parser = parsing.Parser(framed=True,
-                                     kvy=self.kvy,
-                                     tvy=self.tvy,
-                                     exc=self.exc,
-                                     rvy=self.rvy,
-                                     vry=self.verifier,
-                                     local=True)  # disable misfit escrow until we can add another parser for remote.
+        self.parser = parsing.Parser(
+            framed=True,
+            kvy=self.kvy,
+            tvy=self.tvy,
+            exc=self.exc,
+            rvy=self.rvy,
+            vry=self.verifier,
+            local=True,
+        )  # disable misfit escrow until we can add another parser for remote.
 
-        doers.extend([
-            Initer(agentHab=agentHab, caid=caid, tock=self.tocks.get("initer", 0.0)),
-            Querier(hby=hby, agentHab=agentHab, kvy=self.kvy, queries=self.queries,
-                    tock=self.tocks.get("querier", 0.0)),
-            Escrower(kvy=self.kvy, rgy=self.rgy, rvy=self.rvy, tvy=self.tvy, exc=self.exc, vry=self.verifier,
-                     registrar=self.registrar, credentialer=self.credentialer, tock=self.tocks.get("escrower", 0.0)),
-            ParserDoer(kvy=self.kvy, parser=self.parser, tock=self.tocks.get("parser", 0.0)),
-            Witnesser(receiptor=receiptor, witners=self.witners, tock=self.tocks.get("witnesser", 0.0)),
-            Delegator(agentHab=agentHab, swain=self.swain, anchors=self.anchors, tock=self.tocks.get("delegator", 0.0)),
-            ExchangeSender(hby=hby, agentHab=agentHab, exc=self.exc, exchanges=self.exchanges,
-                           tock=self.tocks.get("exchangeSender", 0.0)),
-            Granter(hby=hby, rgy=rgy, agentHab=agentHab, exc=self.exc, grants=self.grants,
-                    tock=self.tocks.get("granter", 0.0)),
-            Admitter(hby=hby, witq=self.witq, psr=self.parser, agentHab=agentHab, exc=self.exc, admits=self.admits,
-                     tock=self.tocks.get("admitter", 0.0)),
-            GroupRequester(hby=hby, agentHab=agentHab, counselor=self.counselor, groups=self.groups,
-                           tock=self.tocks.get("groupRequester", 0.0)),
-            SeekerDoer(seeker=self.seeker, cues=self.verifier.cues, tock=self.tocks.get("seeker", 0.0)),
-            ExchangeCueDoer(seeker=self.exnseeker, cues=self.exc.cues, queries=self.queries,
-                            tock=self.tocks.get("exchangecue", 0.0)),
-            self.submitter,
-        ])
+        doers.extend(
+            [
+                Initer(
+                    agentHab=agentHab, caid=caid, tock=self.tocks.get("initer", 0.0)
+                ),
+                Querier(
+                    hby=hby,
+                    agentHab=agentHab,
+                    kvy=self.kvy,
+                    queries=self.queries,
+                    tock=self.tocks.get("querier", 0.0),
+                ),
+                Escrower(
+                    kvy=self.kvy,
+                    rgy=self.rgy,
+                    rvy=self.rvy,
+                    tvy=self.tvy,
+                    exc=self.exc,
+                    vry=self.verifier,
+                    registrar=self.registrar,
+                    credentialer=self.credentialer,
+                    tock=self.tocks.get("escrower", 0.0),
+                ),
+                ParserDoer(
+                    kvy=self.kvy, parser=self.parser, tock=self.tocks.get("parser", 0.0)
+                ),
+                Witnesser(
+                    receiptor=receiptor,
+                    witners=self.witners,
+                    tock=self.tocks.get("witnesser", 0.0),
+                ),
+                Delegator(
+                    agentHab=agentHab,
+                    swain=self.swain,
+                    anchors=self.anchors,
+                    tock=self.tocks.get("delegator", 0.0),
+                ),
+                ExchangeSender(
+                    hby=hby,
+                    agentHab=agentHab,
+                    exc=self.exc,
+                    exchanges=self.exchanges,
+                    tock=self.tocks.get("exchangeSender", 0.0),
+                ),
+                Granter(
+                    hby=hby,
+                    rgy=rgy,
+                    agentHab=agentHab,
+                    exc=self.exc,
+                    grants=self.grants,
+                    tock=self.tocks.get("granter", 0.0),
+                ),
+                Admitter(
+                    hby=hby,
+                    witq=self.witq,
+                    psr=self.parser,
+                    agentHab=agentHab,
+                    exc=self.exc,
+                    admits=self.admits,
+                    tock=self.tocks.get("admitter", 0.0),
+                ),
+                GroupRequester(
+                    hby=hby,
+                    agentHab=agentHab,
+                    counselor=self.counselor,
+                    groups=self.groups,
+                    tock=self.tocks.get("groupRequester", 0.0),
+                ),
+                SeekerDoer(
+                    seeker=self.seeker,
+                    cues=self.verifier.cues,
+                    tock=self.tocks.get("seeker", 0.0),
+                ),
+                ExchangeCueDoer(
+                    seeker=self.exnseeker,
+                    cues=self.exc.cues,
+                    queries=self.queries,
+                    tock=self.tocks.get("exchangecue", 0.0),
+                ),
+                self.submitter,
+            ]
+        )
 
         super(Agent, self).__init__(doers=doers, always=True, **opts)
 
@@ -576,7 +768,6 @@ class Agent(doing.DoDoer):
 
 
 class ParserDoer(doing.Doer):
-
     def __init__(self, kvy, parser, tock=0.0):
         self.kvy = kvy
         self.parser = parser
@@ -585,13 +776,14 @@ class ParserDoer(doing.Doer):
 
     def recur(self, tyme=None):
         if self.parser.ims:
-            logger.info("Agent %s received:\n%s\n...\n", self.kvy, self.parser.ims[:1024])
+            logger.info(
+                "Agent %s received:\n%s\n...\n", self.kvy, self.parser.ims[:1024]
+            )
         done = yield from self.parser.parsator()  # process messages continuously
         return done  # should never get here except forced close
 
 
 class Witnesser(doing.Doer):
-
     def __init__(self, receiptor, witners, tock=0.0):
         self.receiptor = receiptor
         self.witners = witners
@@ -605,7 +797,7 @@ class Witnesser(doing.Doer):
                 serder = msg["serder"]
 
                 # If we are a rotation event, may need to catch new witnesses up to current key state
-                if serder.ked['t'] in (Ilks.rot, Ilks.drt):
+                if serder.ked["t"] in (Ilks.rot, Ilks.drt):
                     adds = serder.ked["ba"]
                     for wit in adds:
                         yield from self.receiptor.catchup(serder.pre, wit)
@@ -616,7 +808,6 @@ class Witnesser(doing.Doer):
 
 
 class Delegator(doing.Doer):
-
     def __init__(self, agentHab, swain, anchors, tock=0.0):
         self.agentHab = agentHab
         self.swain = swain
@@ -634,7 +825,6 @@ class Delegator(doing.Doer):
 
 
 class ExchangeSender(doing.DoDoer):
-
     def __init__(self, hby, agentHab, exc, exchanges, tock=0.0):
         self.hby = hby
         self.agentHab = agentHab
@@ -646,7 +836,7 @@ class ExchangeSender(doing.DoDoer):
     def recur(self, tyme, deeds=None):
         if self.exchanges:
             msg = self.exchanges.popleft()
-            said = msg['said']
+            said = msg["said"]
             if not self.exc.complete(said=said):
                 self.exchanges.append(msg)
                 return super(ExchangeSender, self).recur(tyme, deeds)
@@ -655,16 +845,17 @@ class ExchangeSender(doing.DoDoer):
 
             pre = msg["pre"]
             rec = msg["rec"]
-            topic = msg['topic']
+            topic = msg["topic"]
             hab = self.hby.habs[pre]
             if self.exc.lead(hab, said=said):
                 atc = exchanging.serializeMessage(self.hby, said)
-                del atc[:serder.size]
+                del atc[: serder.size]
                 for recp in rec:
-                    postman = forwarding.StreamPoster(hby=self.hby, hab=self.agentHab, recp=recp, topic=topic)
+                    postman = forwarding.StreamPoster(
+                        hby=self.hby, hab=self.agentHab, recp=recp, topic=topic
+                    )
                     try:
-                        postman.send(serder=serder,
-                                     attachment=atc)
+                        postman.send(serder=serder, attachment=atc)
                     except kering.ValidationError:
                         logger.info(f"unable to send to recipient={recp}")
                     else:
@@ -675,7 +866,6 @@ class ExchangeSender(doing.DoDoer):
 
 
 class Granter(doing.DoDoer):
-
     def __init__(self, hby, rgy, agentHab, exc, grants, tock=0.0):
         self.hby = hby
         self.rgy = rgy
@@ -688,7 +878,7 @@ class Granter(doing.DoDoer):
     def recur(self, tyme, deeds=None):
         if self.grants:
             msg = self.grants.popleft()
-            said = msg['said']
+            said = msg["said"]
             if not self.exc.complete(said=said):
                 self.grants.append(msg)
                 return super(Granter, self).recur(tyme, deeds)
@@ -700,14 +890,18 @@ class Granter(doing.DoDoer):
             hab = self.hby.habs[pre]
             if self.exc.lead(hab, said=said):
                 for recp in rec:
-                    postman = forwarding.StreamPoster(hby=self.hby, hab=self.agentHab, recp=recp, topic="credential")
+                    postman = forwarding.StreamPoster(
+                        hby=self.hby, hab=self.agentHab, recp=recp, topic="credential"
+                    )
                     try:
-                        credSaid = serder.ked['e']['acdc']['d']
+                        credSaid = serder.ked["e"]["acdc"]["d"]
                         creder = self.rgy.reger.creds.get(keys=(credSaid,))
                         sendArtifacts(self.hby, self.rgy.reger, postman, creder, recp)
                         sources = self.rgy.reger.sources(self.hby.db, creder)
                         for source, atc in sources:
-                            sendArtifacts(self.hby, self.rgy.reger, postman, source, recp)
+                            sendArtifacts(
+                                self.hby, self.rgy.reger, postman, source, recp
+                            )
                             postman.send(serder=source, attachment=atc)
 
                     except kering.ValidationError:
@@ -722,7 +916,6 @@ class Granter(doing.DoDoer):
 
 
 class Admitter(doing.Doer):
-
     def __init__(self, hby, witq, psr, agentHab, exc, admits, tock=0.0):
         self.hby = hby
         self.agentHab = agentHab
@@ -736,27 +929,29 @@ class Admitter(doing.Doer):
     def recur(self, tyme):
         if self.admits:
             msg = self.admits.popleft()
-            said = msg['said']
+            said = msg["said"]
             if not self.exc.complete(said=said):
                 self.admits.append(msg)
                 return False
 
             admit, _ = exchanging.cloneMessage(self.hby, said)
 
-            if 'p' not in admit.ked or not admit.ked['p']:
+            if "p" not in admit.ked or not admit.ked["p"]:
                 print(f"Invalid admit message={admit.ked}, no grant listed")
                 return False
 
-            grant, pathed = exchanging.cloneMessage(self.hby, admit.ked['p'])
+            grant, pathed = exchanging.cloneMessage(self.hby, admit.ked["p"])
 
-            embeds = grant.ked['e']
+            embeds = grant.ked["e"]
             acdc = embeds["acdc"]
-            issr = acdc['i']
+            issr = acdc["i"]
 
             # Lets get the latest KEL and Registry if needed
             self.witq.query(hab=self.agentHab, pre=issr)
             if "ri" in acdc:
-                self.witq.telquery(hab=self.agentHab, pre=issr, ri=acdc["ri"], i=acdc["d"])
+                self.witq.telquery(
+                    hab=self.agentHab, pre=issr, ri=acdc["ri"], i=acdc["d"]
+                )
 
             for label in ("anc", "iss", "acdc"):
                 ked = embeds[label]
@@ -770,7 +965,6 @@ class Admitter(doing.Doer):
 
 
 class SeekerDoer(doing.Doer):
-
     def __init__(self, seeker, cues, tock=0.0):
         self.seeker = seeker
         self.cues = cues
@@ -793,7 +987,6 @@ class SeekerDoer(doing.Doer):
 
 
 class ExchangeCueDoer(doing.Doer):
-
     def __init__(self, seeker, cues, queries, tock=0.0):
         self.seeker = seeker
         self.cues = cues
@@ -812,7 +1005,7 @@ class ExchangeCueDoer(doing.Doer):
                     self.cues.append(cue)
                     return False
             elif cue["kin"] == "query":
-                self.queries.append(cue['q'])
+                self.queries.append(cue["q"])
                 return False
             else:
                 self.cues.append(cue)
@@ -827,7 +1020,7 @@ class Initer(doing.Doer):
         super(Initer, self).__init__(tock=self.tock)
 
     def recur(self, tyme):
-        """ Prints Agent name and prefix """
+        """Prints Agent name and prefix"""
         if not self.agentHab.inited:
             return False
 
@@ -836,7 +1029,6 @@ class Initer(doing.Doer):
 
 
 class GroupRequester(doing.Doer):
-
     def __init__(self, hby, agentHab, counselor, groups, tock=0.0):
         self.hby = hby
         self.agentHab = agentHab
@@ -846,7 +1038,7 @@ class GroupRequester(doing.Doer):
         super(GroupRequester, self).__init__(tock=self.tock)
 
     def recur(self, tyme):
-        """ Checks cue for group proceccing requests and processes any with Counselor """
+        """Checks cue for group proceccing requests and processes any with Counselor"""
         if self.groups:
             msg = self.groups.popleft()
             serder = msg["serder"]
@@ -856,13 +1048,14 @@ class GroupRequester(doing.Doer):
             prefixer = coring.Prefixer(qb64=serder.pre)
             seqner = coring.Seqner(sn=serder.sn)
             saider = coring.Saider(qb64=serder.said)
-            self.counselor.start(ghab=ghab, prefixer=prefixer, seqner=seqner, saider=saider)
+            self.counselor.start(
+                ghab=ghab, prefixer=prefixer, seqner=seqner, saider=saider
+            )
 
         return False
 
 
 class Querier(doing.DoDoer):
-
     def __init__(self, hby, agentHab, queries, kvy, tock=0.0):
         self.hby = hby
         self.agentHab = agentHab
@@ -872,7 +1065,7 @@ class Querier(doing.DoDoer):
         super(Querier, self).__init__(always=True, tock=self.tock)
 
     def recur(self, tyme, deeds=None):
-        """ Processes query reqests submitting any on the cue"""
+        """Processes query reqests submitting any on the cue"""
         if self.queries:
             msg = self.queries.popleft()
             if "pre" not in msg:
@@ -881,15 +1074,21 @@ class Querier(doing.DoDoer):
             pre = msg["pre"]
 
             if "sn" in msg:
-                sn = int(msg['sn'], 16)
-                seqNoDo = querying.SeqNoQuerier(hby=self.hby, hab=self.agentHab, pre=pre, sn=sn)
+                sn = int(msg["sn"], 16)
+                seqNoDo = querying.SeqNoQuerier(
+                    hby=self.hby, hab=self.agentHab, pre=pre, sn=sn
+                )
                 self.extend([seqNoDo])
             elif "anchor" in msg:
-                anchor = msg['anchor']
-                anchorDo = querying.AnchorQuerier(hby=self.hby, hab=self.agentHab, pre=pre, anchor=anchor)
+                anchor = msg["anchor"]
+                anchorDo = querying.AnchorQuerier(
+                    hby=self.hby, hab=self.agentHab, pre=pre, anchor=anchor
+                )
                 self.extend([anchorDo])
             else:
-                qryDo = querying.QueryDoer(hby=self.hby, hab=self.agentHab, pre=pre, kvy=self.kvy)
+                qryDo = querying.QueryDoer(
+                    hby=self.hby, hab=self.agentHab, pre=pre, kvy=self.kvy
+                )
                 self.extend([qryDo])
 
         return super(Querier, self).recur(tyme, deeds)
@@ -897,7 +1096,7 @@ class Querier(doing.DoDoer):
 
 class Escrower(doing.Doer):
     def __init__(self, kvy, rgy, rvy, tvy, exc, vry, registrar, credentialer, tock=0.0):
-        """ Recuring process or escrows for all components in an Agent
+        """Recuring process or escrows for all components in an Agent
 
         Parameters:
             kvy (Kevery):
@@ -922,7 +1121,7 @@ class Escrower(doing.Doer):
         super(Escrower, self).__init__(tock=self.tock)
 
     def recur(self, tyme):
-        """ Process all escrows once per loop. """
+        """Process all escrows once per loop."""
         self.kvy.processEscrows()
         self.kvy.processEscrowDelegables()
         self.rgy.processEscrows()
@@ -934,14 +1133,15 @@ class Escrower(doing.Doer):
         self.registrar.processEscrows()
         self.credentialer.processEscrows()
         return False
-    
+
+
 class Releaser(doing.Doer):
     def __init__(self, agency: Agency, releaseTimeout=86400):
-        """ Check open agents and close if idle for more than releaseTimeout seconds
+        """Check open agents and close if idle for more than releaseTimeout seconds
         Parameters:
             agency (Agency): KERIA agent manager
             releaseTimeout (int): Timeout in seconds
- 
+
         """
         self.tock = 60.0
         self.agents = agency.agents
@@ -955,12 +1155,15 @@ class Releaser(doing.Doer):
             idle = []
             for caid in self.agents:
                 now = helping.nowUTC()
-                if (now - self.agents[caid].last) > datetime.timedelta(seconds=self.releaseTimeout):
+                if (now - self.agents[caid].last) > datetime.timedelta(
+                    seconds=self.releaseTimeout
+                ):
                     idle.append(caid)
 
             for caid in idle:
                 self.agency.shut(self.agents[caid])
             yield self.tock
+
 
 def loadEnds(app):
     opColEnd = longrunning.OperationCollectionEnd()
@@ -987,10 +1190,12 @@ def loadEnds(app):
 
 
 class BootEnd:
-    """ Resource class for creating datastore in cloud ahab """
+    """Resource class for creating datastore in cloud ahab"""
 
-    def __init__(self, agency: Agency, username: str | None = None, password: str | None = None):
-        """ Provides endpoints for initializing and unlocking an agent
+    def __init__(
+        self, agency: Agency, username: str | None = None, password: str | None = None
+    ):
+        """Provides endpoints for initializing and unlocking an agent
         Parameters:
             agency (Agency): Agency for managing agents
             username (str): username for boot request
@@ -1001,20 +1206,19 @@ class BootEnd:
         self.agency = agency
 
     def parseBasicAuth(self, req: falcon.Request):
-        schemePrefix = 'Basic '
+        schemePrefix = "Basic "
         if req.auth is None or not req.auth.startswith(schemePrefix):
             return None, None
 
-        token = b64decode(req.auth[len(schemePrefix):]).decode('utf-8')
-        splitIndex = token.find(':')
+        token = b64decode(req.auth[len(schemePrefix) :]).decode("utf-8")
+        splitIndex = token.find(":")
         if splitIndex == -1:
             return None, None
 
         username = token[:splitIndex]
-        password = token[splitIndex + 1:]
+        password = token[splitIndex + 1 :]
 
         return username, password
-
 
     def authenticate(self, req: falcon.Request):
         # Username AND Password is not set, so no need to authenticate
@@ -1036,7 +1240,7 @@ class BootEnd:
         raise falcon.HTTPUnauthorized(title="Unauthorized")
 
     def on_post(self, req: falcon.Request, rep: falcon.Response):
-        """ Inception event POST endpoint
+        """Inception event POST endpoint
 
         Give me a new Agent.  Create Habery using ctrlPRE as database name, agentHab that anchors the caid and
         returns the KEL of agentHAB Stores ControllerPRE -> AgentPRE in database
@@ -1051,34 +1255,46 @@ class BootEnd:
 
         body = req.get_media()
         if "icp" not in body:
-            raise falcon.HTTPBadRequest(title="invalid inception",
-                                        description=f'required field "icp" missing from body')
+            raise falcon.HTTPBadRequest(
+                title="invalid inception",
+                description='required field "icp" missing from body',
+            )
         icp = serdering.SerderKERI(sad=body["icp"])
 
         if "sig" not in body:
-            raise falcon.HTTPBadRequest(title="invalid inception",
-                                        description=f'required field "sig" missing from body')
+            raise falcon.HTTPBadRequest(
+                title="invalid inception",
+                description='required field "sig" missing from body',
+            )
         siger = core.Siger(qb64=body["sig"])
 
         caid = icp.pre
 
         if self.agency.get(caid=caid) is not None:
-            raise falcon.HTTPConflict(title="agent already exists",
-                                      description=f"agent for controller {caid} already exists")
+            raise falcon.HTTPConflict(
+                title="agent already exists",
+                description=f"agent for controller {caid} already exists",
+            )
 
         agent = self.agency.create(caid=caid)
 
         try:
-            ctrlHab = agent.hby.makeSignifyHab(name=agent.caid, ns="agent", serder=icp, sigers=[siger])
+            ctrlHab = agent.hby.makeSignifyHab(
+                name=agent.caid, ns="agent", serder=icp, sigers=[siger]
+            )
         except Exception:
             self.agency.delete(agent)
-            raise falcon.HTTPBadRequest(title="invalid inception",
-                                        description=f'invalid icp event for caid {agent.caid}')
+            raise falcon.HTTPBadRequest(
+                title="invalid inception",
+                description=f"invalid icp event for caid {agent.caid}",
+            )
 
         if ctrlHab.pre != agent.caid:
             self.agency.delete(agent)
-            raise falcon.HTTPBadRequest(title="invalid inception",
-                                        description=f'invalid icp event for caid {agent.caid}')
+            raise falcon.HTTPBadRequest(
+                title="invalid inception",
+                description=f"invalid icp event for caid {agent.caid}",
+            )
 
         # Client is requesting that the Agent track the Salty parameters
         if Algos.salty in body:
@@ -1091,28 +1307,47 @@ class BootEnd:
             ncodes = httping.getRequiredParam(salt, "ncodes")
 
             mgr = agent.mgr.get(algo=Algos.salty)
-            mgr.incept(agent.caid, icodes=icodes, ncodes=ncodes, sxlt=sxlt, pidx=pidx, kidx=0, stem=stem, tier=tier,
-                       transferable=True)
+            mgr.incept(
+                agent.caid,
+                icodes=icodes,
+                ncodes=ncodes,
+                sxlt=sxlt,
+                pidx=pidx,
+                kidx=0,
+                stem=stem,
+                tier=tier,
+                transferable=True,
+            )
 
         elif Algos.randy in body:
             rand = body[Algos.randy]
             if "pris" not in rand:
-                raise falcon.HTTPBadRequest(title="invalid inception",
-                                            description=f'required field "pris" missing from body.rand')
+                raise falcon.HTTPBadRequest(
+                    title="invalid inception",
+                    description='required field "pris" missing from body.rand',
+                )
             pris = rand["pris"]
 
             if "nxts" not in rand:
-                raise falcon.HTTPBadRequest(title="invalid inception",
-                                            description=f'required field "nxts" missing from body.rand')
+                raise falcon.HTTPBadRequest(
+                    title="invalid inception",
+                    description='required field "nxts" missing from body.rand',
+                )
             nxts = rand["nxts"]
 
             mgr = agent.mgr.get(algo=Algos.randy)
-            mgr.incept(agent.caid, verfers=ctrlHab.kever.verfers,
-                       digers=ctrlHab.kever.digers,
-                       prxs=pris, nxts=nxts)
+            mgr.incept(
+                agent.caid,
+                verfers=ctrlHab.kever.verfers,
+                digers=ctrlHab.kever.digers,
+                prxs=pris,
+                nxts=nxts,
+            )
 
         elif Algos.group in body:
-            raise falcon.HTTPBadRequest(description="multisig groups not supported as agent controller")
+            raise falcon.HTTPBadRequest(
+                description="multisig groups not supported as agent controller"
+            )
 
         rep.status = falcon.HTTP_202
         rep.data = json.dumps(asdict(agent.agentHab.kever.state())).encode("utf-8")
@@ -1127,7 +1362,6 @@ class HealthEnd:
 
 
 class KeyStateCollectionEnd:
-
     @staticmethod
     def on_get(req, rep):
         """
@@ -1178,7 +1412,6 @@ class KeyStateCollectionEnd:
 
 
 class KeyEventCollectionEnd:
-
     @staticmethod
     def on_get(req, rep):
         """
@@ -1220,7 +1453,7 @@ class KeyEventCollectionEnd:
                 raise falcon.HTTPInternalServerError(f"Missing event for dig={dig}.")
 
             serder = serdering.SerderKERI(raw=bytes(raw))
-            atc = raw[serder.size:]
+            atc = raw[serder.size :]
             events.append(dict(ked=serder.ked, atc=atc.decode("utf-8")))
 
         rep.status = falcon.HTTP_200
@@ -1229,14 +1462,12 @@ class KeyEventCollectionEnd:
 
 
 class OOBICollectionEnd:
-
     def __init__(self):
-        """ Create OOBI Collection endpoint instance
-        """
+        """Create OOBI Collection endpoint instance"""
 
     @staticmethod
     def on_post(req, rep):
-        """ Resolve OOBI endpoint.
+        """Resolve OOBI endpoint.
 
         Parameters:
             req: falcon.Request HTTP request
@@ -1285,13 +1516,19 @@ class OOBICollectionEnd:
             agent.hby.db.oobis.pin(keys=(oobi,), val=obr)
 
         elif "rpy" in body:
-            raise falcon.HTTPNotImplemented(description="'rpy' support not implemented yet")
+            raise falcon.HTTPNotImplemented(
+                description="'rpy' support not implemented yet"
+            )
 
         else:
-            raise falcon.HTTPBadRequest(description="invalid OOBI request body, either 'rpy' or 'url' is required")
+            raise falcon.HTTPBadRequest(
+                description="invalid OOBI request body, either 'rpy' or 'url' is required"
+            )
 
         oid = Salter().qb64
-        op = agent.monitor.submit(oid, longrunning.OpTypes.oobi, metadata=dict(oobi=oobi))
+        op = agent.monitor.submit(
+            oid, longrunning.OpTypes.oobi, metadata=dict(oobi=oobi)
+        )
 
         rep.status = falcon.HTTP_202
         rep.content_type = "application/json"
@@ -1299,10 +1536,9 @@ class OOBICollectionEnd:
 
 
 class OobiResourceEnd:
-
     @staticmethod
     def on_get(req, rep, alias):
-        """ OOBI GET endpoint
+        """OOBI GET endpoint
 
         Parameters:
             req: falcon.Request HTTP request
@@ -1347,37 +1583,58 @@ class OobiResourceEnd:
         if role in (kering.Roles.witness,):  # Fetch URL OOBIs for all witnesses
             oobis = []
             for wit in hab.kever.wits:
-                urls = hab.fetchUrls(eid=wit, scheme=kering.Schemes.http) or hab.fetchUrls(eid=wit,
-                                                                                           scheme=kering.Schemes.https)
+                urls = hab.fetchUrls(
+                    eid=wit, scheme=kering.Schemes.http
+                ) or hab.fetchUrls(eid=wit, scheme=kering.Schemes.https)
                 if not urls:
-                    raise falcon.HTTPNotFound(description=f"unable to query witness {wit}, no http endpoint")
+                    raise falcon.HTTPNotFound(
+                        description=f"unable to query witness {wit}, no http endpoint"
+                    )
 
-                url = urls[kering.Schemes.http] if kering.Schemes.http in urls else urls[kering.Schemes.https]
+                url = (
+                    urls[kering.Schemes.http]
+                    if kering.Schemes.http in urls
+                    else urls[kering.Schemes.https]
+                )
                 up = urlparse(url)
                 oobis.append(urljoin(up.geturl(), f"/oobi/{hab.pre}/witness/{wit}"))
             res["oobis"] = oobis
         elif role in (kering.Roles.controller,):  # Fetch any controller URL OOBIs
             oobis = []
-            urls = hab.fetchUrls(eid=hab.pre, scheme=kering.Schemes.http) or hab.fetchUrls(eid=hab.pre,
-                                                                                           scheme=kering.Schemes.https)
+            urls = hab.fetchUrls(
+                eid=hab.pre, scheme=kering.Schemes.http
+            ) or hab.fetchUrls(eid=hab.pre, scheme=kering.Schemes.https)
             if not urls:
-                raise falcon.HTTPNotFound(description=f"unable to query controller {hab.pre}, no http endpoint")
+                raise falcon.HTTPNotFound(
+                    description=f"unable to query controller {hab.pre}, no http endpoint"
+                )
 
-            url = urls[kering.Schemes.http] if kering.Schemes.http in urls else urls[kering.Schemes.https]
+            url = (
+                urls[kering.Schemes.http]
+                if kering.Schemes.http in urls
+                else urls[kering.Schemes.https]
+            )
             up = urlparse(url)
             oobis.append(urljoin(up.geturl(), f"/oobi/{hab.pre}/controller"))
             res["oobis"] = oobis
         elif role in (kering.Roles.agent,):
             oobis = []
-            roleUrls = hab.fetchRoleUrls(hab.pre, scheme=kering.Schemes.http,
-                                         role=kering.Roles.agent) or hab.fetchRoleurls(hab.pre,
-                                                                                       scheme=kering.Schemes.https,
-                                                                                       role=kering.Roles.agent)
+            roleUrls = hab.fetchRoleUrls(
+                hab.pre, scheme=kering.Schemes.http, role=kering.Roles.agent
+            ) or hab.fetchRoleurls(
+                hab.pre, scheme=kering.Schemes.https, role=kering.Roles.agent
+            )
             if not roleUrls:
-                raise falcon.HTTPNotFound(description=f"unable to query controller {hab.pre}, no http endpoint")
+                raise falcon.HTTPNotFound(
+                    description=f"unable to query controller {hab.pre}, no http endpoint"
+                )
 
-            for eid, urls in roleUrls['agent'].items():
-                url = urls[kering.Schemes.http] if kering.Schemes.http in urls else urls[kering.Schemes.https]
+            for eid, urls in roleUrls["agent"].items():
+                url = (
+                    urls[kering.Schemes.http]
+                    if kering.Schemes.http in urls
+                    else urls[kering.Schemes.https]
+                )
                 up = urlparse(url)
                 oobis.append(urljoin(up.geturl(), f"/oobi/{hab.pre}/agent/{eid}"))
                 res["oobis"] = oobis
@@ -1391,7 +1648,6 @@ class OobiResourceEnd:
 
 
 class QueryCollectionEnd:
-
     @staticmethod
     def on_post(req, rep):
         """
@@ -1440,12 +1696,12 @@ class QueryCollectionEnd:
         oid = pre
         if "anchor" in body:
             qry["anchor"] = body["anchor"]
-            oid = f"{pre}.{body["anchor"]["d"]}"
+            oid = f"{pre}.{body['anchor']['d']}"
         elif "sn" in body:
             qry["sn"] = body["sn"]
-            oid = f"{pre}.{body["sn"]}"
+            oid = f"{pre}.{body['sn']}"
         else:  # Must reset key state so we know when we have a new update.
-            for (keys, saider) in agent.hby.db.knas.getItemIter(keys=(pre,)):
+            for keys, saider in agent.hby.db.knas.getItemIter(keys=(pre,)):
                 agent.hby.db.knas.rem(keys)
                 agent.hby.db.ksns.rem((saider.qb64,))
                 agent.hby.db.ksns.rem((saider.qb64,))
@@ -1456,6 +1712,7 @@ class QueryCollectionEnd:
         rep.status = falcon.HTTP_202
         rep.content_type = "application/json"
         rep.data = op.to_json().encode("utf-8")
+
 
 class Submitter(doing.DoDoer):
     def __init__(self, hby, submits, witRec):
@@ -1501,10 +1758,9 @@ class Submitter(doing.DoDoer):
 
 
 class ConfigResourceEnd:
-
     @staticmethod
     def on_get(req, rep):
-        """ Config GET endpoint
+        """Config GET endpoint
 
         Parameters:
             req (Request): falcon.Request HTTP request
